@@ -3,7 +3,7 @@
 return [
     'paths' => ['api/*', 'sanctum/csrf-cookie'],
     'allowed_methods' => ['*'],
-    'allowed_origins' => ['http://localhost:8080', 'http://localhost:3000', 'http://localhost:8081'],
+    'allowed_origins' => ['http://localhost:8080', 'http://localhost:3000', 'http://localhost:8081', 'https://isueadmin.netlify.app'],
     'allowed_origins_patterns' => [],
     'allowed_headers' => ['*'],
     'exposed_headers' => [],
