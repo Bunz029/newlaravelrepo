@@ -8,6 +8,11 @@ if [ -z "$APP_KEY" ]; then
     php artisan key:generate --force
 fi
 
+# Set default database connection to mysql for Railway
+if [ -z "$DB_CONNECTION" ]; then
+    export DB_CONNECTION=mysql
+fi
+
 # Run migrations
 php artisan migrate --force
 
