@@ -13,6 +13,16 @@ use App\Http\Controllers\PublicationController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ActivityLogController;
 
+// Health check route for Railway
+Route::get('/', function () {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'ISU E-MAP API is running',
+        'version' => '1.0.0',
+        'timestamp' => now()
+    ]);
+});
+
 // Map Management Routes - Put these first to avoid conflicts with other routes
 Route::prefix('map')->group(function () {
     Route::get('/', [MapController::class, 'index']);

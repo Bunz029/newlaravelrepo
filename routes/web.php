@@ -9,6 +9,16 @@ use App\Http\Controllers\MapController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\StatsController;
 
+// Health check route for Railway
+Route::get('/', function () {
+    return response()->json([
+        'status' => 'success',
+        'message' => 'ISU E-MAP API is running',
+        'version' => '1.0.0',
+        'timestamp' => now()
+    ]);
+});
+
 // User Routes
 Route::middleware('auth:sanctum')->get('user', [UserController::class, 'getAuthenticatedUser']);
 
