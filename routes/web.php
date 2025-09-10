@@ -28,6 +28,17 @@ Route::get('/linkstorage', function () {
     ]);
 });
 
+// Serve storage files directly (fallback for Railway)
+Route::get('/storage/{path}', function ($path) {
+    $filePath = storage_path('app/public/' . $path);
+    
+    if (!file_exists($filePath)) {
+        abort(404, 'File not found: ' . $filePath);
+    }
+    
+    return response()->file($filePath);
+})->where('path', '.*');
+
 
 // User Routes
 Route::middleware('auth:sanctum')->get('user', [UserController::class, 'getAuthenticatedUser']);
