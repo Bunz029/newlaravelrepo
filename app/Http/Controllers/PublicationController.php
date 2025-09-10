@@ -956,9 +956,14 @@ class PublicationController extends Controller
             $map = Map::findOrFail($id);
             
             if (!$map->published_data) {
+                // New map that was never published - just delete it
+                $mapName = $map->name;
+                $map->delete();
+                
                 return response()->json([
-                    'error' => 'No published data found to revert to'
-                ], 400);
+                    'message' => 'New map deleted successfully',
+                    'deleted_map' => $mapName
+                ]);
             }
             
             // Revert to published state
