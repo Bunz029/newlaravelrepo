@@ -113,7 +113,8 @@ class MapController extends Controller
             'width' => 'sometimes|required|integer',
             'height' => 'sometimes|required|integer',
             'is_active' => 'sometimes|required|boolean',
-            'is_published' => 'nullable|in:true,false,1,0'
+            'is_published' => 'nullable|in:true,false,1,0',
+            'pending_deletion' => 'nullable|boolean'
         ]);
 
         if ($request->hasFile('image')) {
@@ -147,13 +148,21 @@ class MapController extends Controller
         $map->save();
 
         // Log the map update activity
-        $this->logMapActivity('updated', $map, [
+        $activityData = [
             'width' => $map->width,
             'height' => $map->height,
             'is_active' => $map->is_active,
             'is_published' => $map->is_published,
             'building_count' => $map->buildings->count()
-        ]);
+        ];
+
+        // Add specific logging for restoration
+        if ($request->has('pending_deletion') && !$request->input('pending_deletion')) {
+            $activityData['restored_by'] = Auth::user()->name ?? 'Admin';
+            $this->logMapActivity('restored', $map, $activityData);
+        } else {
+            $this->logMapActivity('updated', $map, $activityData);
+        }
 
         $map->image_url = $map->image_path ? asset('storage/' . $map->image_path) : null;
         return response()->json($map);
