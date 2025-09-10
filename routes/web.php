@@ -28,6 +28,21 @@ Route::get('/linkstorage', function () {
     ]);
 });
 
+// Debug upload permissions
+Route::get('/debug-upload', function () {
+    $mapsDir = storage_path('app/public/maps');
+    return response()->json([
+        'maps_dir_exists' => file_exists($mapsDir),
+        'maps_dir_writable' => is_writable($mapsDir),
+        'maps_dir_permissions' => substr(sprintf('%o', fileperms($mapsDir)), -4),
+        'storage_dir_exists' => file_exists(storage_path('app/public')),
+        'storage_dir_writable' => is_writable(storage_path('app/public')),
+        'php_upload_max' => ini_get('upload_max_filesize'),
+        'php_post_max' => ini_get('post_max_size'),
+        'php_max_files' => ini_get('max_file_uploads')
+    ]);
+});
+
 // Serve storage files directly (fallback for Railway)
 Route::get('/storage/{path}', function ($path) {
     $filePath = storage_path('app/public/' . $path);
