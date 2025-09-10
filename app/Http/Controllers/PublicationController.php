@@ -11,7 +11,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Schema;
 use App\Traits\LogsActivity;
+use Exception;
 
 class PublicationController extends Controller
 {
@@ -26,7 +28,11 @@ class PublicationController extends Controller
             $allMaps = Map::all();
             $unpublishedMapsCount = $allMaps->filter(function ($map) {
                 if (!$map->is_published) return true;
-                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) return true;
+                try {
+                    if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) return true;
+                } catch (Exception $e) {
+                    // Column doesn't exist yet, skip this check
+                }
                 if ($map->published_data) {
                     $currentData = $map->only(['name', 'image_path', 'width', 'height', 'is_active']);
                     return $currentData != $map->published_data;
@@ -175,8 +181,12 @@ class PublicationController extends Controller
                 }
                 
                 // Include if marked for deletion
-                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
-                    return true;
+                try {
+                    if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
+                        return true;
+                    }
+                } catch (Exception $e) {
+                    // Column doesn't exist yet, skip this check
                 }
                 
                 // Include if published but has changes from snapshot
@@ -291,7 +301,8 @@ class PublicationController extends Controller
             $map = Map::findOrFail($id);
             
             // Handle map deletion vs update
-            if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
+            try {
+                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
                 // Map is marked for deletion - actually delete it
                 $mapName = $map->name;
                 $buildingCount = $map->buildings->count();
@@ -309,7 +320,13 @@ class PublicationController extends Controller
                     'message' => 'Map deletion published successfully',
                     'deleted_map' => $mapName
                 ]);
-            } else {
+                }
+            } catch (Exception $e) {
+                // Column doesn't exist yet, proceed with normal publish
+            }
+            
+            // Normal publish logic
+            if (true) {
                 // Store current data as published snapshot
                 $map->published_data = $map->only([
                     'name', 'image_path', 'width', 'height', 'is_active'
@@ -430,7 +447,11 @@ class PublicationController extends Controller
             $allMaps = Map::all();
             $unpublishedMaps = $allMaps->filter(function ($map) {
                 if (!$map->is_published) return true;
-                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) return true;
+                try {
+                    if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) return true;
+                } catch (Exception $e) {
+                    // Column doesn't exist yet, skip this check
+                }
                 if ($map->published_data) {
                     $currentData = $map->only(['name', 'image_path', 'width', 'height', 'is_active']);
                     return $currentData != $map->published_data;
@@ -440,21 +461,32 @@ class PublicationController extends Controller
             
             $count = 0;
             foreach ($unpublishedMaps as $map) {
-                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
-                    // Map is marked for deletion - actually delete it
-                    $mapName = $map->name;
-                    $buildingCount = $map->buildings->count();
-                    
-                    // Log the published deletion activity before deleting
-                    $this->logActivity('published_deletion', 'map', $map->id, $mapName, [
-                        'building_count' => $buildingCount,
-                        'published_by' => $publishedBy
-                    ]);
-                    
-                    // Actually delete the map
-                    $map->delete();
-                } else {
-                    // Normal publish
+                try {
+                    if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
+                        // Map is marked for deletion - actually delete it
+                        $mapName = $map->name;
+                        $buildingCount = $map->buildings->count();
+                        
+                        // Log the published deletion activity before deleting
+                        $this->logActivity('published_deletion', 'map', $map->id, $mapName, [
+                            'building_count' => $buildingCount,
+                            'published_by' => $publishedBy
+                        ]);
+                        
+                        // Actually delete the map
+                        $map->delete();
+                    } else {
+                        // Normal publish
+                        $map->published_data = $map->only([
+                            'name', 'image_path', 'width', 'height', 'is_active'
+                        ]);
+                        $map->is_published = true;
+                        $map->published_at = $publishedAt;
+                        $map->published_by = $publishedBy;
+                        $map->save();
+                    }
+                } catch (Exception $e) {
+                    // Column doesn't exist yet, proceed with normal publish
                     $map->published_data = $map->only([
                         'name', 'image_path', 'width', 'height', 'is_active'
                     ]);
@@ -623,7 +655,11 @@ class PublicationController extends Controller
             $allMaps = Map::all();
             $unpublishedMaps = $allMaps->filter(function ($map) {
                 if (!$map->is_published) return true;
-                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) return true;
+                try {
+                    if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) return true;
+                } catch (Exception $e) {
+                    // Column doesn't exist yet, skip this check
+                }
                 if ($map->published_data) {
                     $currentData = $map->only(['name', 'image_path', 'width', 'height', 'is_active']);
                     return $currentData != $map->published_data;
@@ -633,21 +669,32 @@ class PublicationController extends Controller
             
             $mapCount = 0;
             foreach ($unpublishedMaps as $map) {
-                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
-                    // Map is marked for deletion - actually delete it
-                    $mapName = $map->name;
-                    $buildingCount = $map->buildings->count();
-                    
-                    // Log the published deletion activity before deleting
-                    $this->logActivity('published_deletion', 'map', $map->id, $mapName, [
-                        'building_count' => $buildingCount,
-                        'published_by' => $publishedBy
-                    ]);
-                    
-                    // Actually delete the map
-                    $map->delete();
-                } else {
-                    // Normal publish
+                try {
+                    if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
+                        // Map is marked for deletion - actually delete it
+                        $mapName = $map->name;
+                        $buildingCount = $map->buildings->count();
+                        
+                        // Log the published deletion activity before deleting
+                        $this->logActivity('published_deletion', 'map', $map->id, $mapName, [
+                            'building_count' => $buildingCount,
+                            'published_by' => $publishedBy
+                        ]);
+                        
+                        // Actually delete the map
+                        $map->delete();
+                    } else {
+                        // Normal publish
+                        $map->published_data = $map->only([
+                            'name', 'image_path', 'width', 'height', 'is_active'
+                        ]);
+                        $map->is_published = true;
+                        $map->published_at = $publishedAt;
+                        $map->published_by = $publishedBy;
+                        $map->save();
+                    }
+                } catch (Exception $e) {
+                    // Column doesn't exist yet, proceed with normal publish
                     $map->published_data = $map->only([
                         'name', 'image_path', 'width', 'height', 'is_active'
                     ]);
