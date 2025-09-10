@@ -121,13 +121,33 @@ class DeletedItem extends Model
     private function restoreMap()
     {
         try {
+            // Prefer restoring the original map record if it still exists (pending_deletion flow)
+            $originalId = $this->original_id ?? ($this->item_data['id'] ?? null);
+            if ($originalId) {
+                $map = Map::find($originalId);
+                if ($map) {
+                    // Unmark pending deletion and keep current/published snapshots intact
+                    if (\Illuminate\Support\Facades\Schema::hasColumn('maps', 'pending_deletion')) {
+                        $map->pending_deletion = false;
+                    }
+                    // Do not flip publication state here; admin may choose to publish later
+                    $map->save();
+                    $this->delete();
+                    return true;
+                }
+            }
+
+            // Fallback: recreate the map from stored data (legacy hard-delete case)
             $mapData = $this->item_data;
-            unset($mapData['id']); // Remove the old ID, let database assign new one
-            
-            Map::create($mapData);
-            $this->delete(); // Remove from trash
-            
-            return true;
+            unset($mapData['id']);
+            $restored = Map::create($mapData);
+            // Ensure any snapshot fields are preserved if present on item_data
+            if (isset($this->item_data['published_data'])) {
+                $restored->published_data = $this->item_data['published_data'];
+                $restored->save();
+            }
+            $this->delete();
+            return (bool) $restored;
         } catch (\Exception $e) {
             return false;
         }

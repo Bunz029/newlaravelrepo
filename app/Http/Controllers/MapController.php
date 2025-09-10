@@ -251,6 +251,9 @@ class MapController extends Controller
             $map->pending_deletion = true;
             $map->save();
             
+            // Also move to Trash so it appears in /trash for management
+            \App\Http\Controllers\TrashController::moveToTrash('map', $map, Auth::user()->name ?? 'Admin');
+
             // Log the map deletion activity
             $this->logMapActivity('marked_for_deletion', $map, [
                 'marked_by' => Auth::user()->name ?? 'Admin',
