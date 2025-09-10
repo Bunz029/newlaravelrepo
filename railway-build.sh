@@ -49,3 +49,4 @@ php artisan view:cache
 php artisan optimize
 
 echo "Railway build completed successfully!"
+echo "Storage link should now be working!"
