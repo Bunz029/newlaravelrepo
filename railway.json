@@ -5,7 +5,7 @@
     "buildCommand": "chmod +x railway-build.sh && ./railway-build.sh"
   },
   "deploy": {
-    "startCommand": "php -S 0.0.0.0:$PORT -t public",
+    "startCommand": "php artisan storage:link && php -S 0.0.0.0:$PORT -t public",
     "healthcheckPath": "/",
     "healthcheckTimeout": 100,
     "restartPolicyType": "ON_FAILURE",
