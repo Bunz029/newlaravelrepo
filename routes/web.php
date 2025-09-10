@@ -46,6 +46,30 @@ Route::get('/debug-upload', function () {
     ]);
 });
 
+// Cleanup pending deletions
+Route::get('/cleanup-pending-deletions', function () {
+    try {
+        $pendingMaps = \App\Models\Map::where('pending_deletion', true)->count();
+        $pendingBuildings = \App\Models\Building::where('pending_deletion', true)->count();
+        
+        if ($pendingMaps > 0) {
+            \App\Models\Map::where('pending_deletion', true)->delete();
+        }
+        
+        if ($pendingBuildings > 0) {
+            \App\Models\Building::where('pending_deletion', true)->delete();
+        }
+        
+        return response()->json([
+            'message' => 'Cleanup completed',
+            'deleted_maps' => $pendingMaps,
+            'deleted_buildings' => $pendingBuildings
+        ]);
+    } catch (Exception $e) {
+        return response()->json(['error' => $e->getMessage()], 500);
+    }
+});
+
 // Serve storage files directly (fallback for Railway)
 Route::get('/storage/{path}', function ($path) {
     $filePath = storage_path('app/public/' . $path);

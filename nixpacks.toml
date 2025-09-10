@@ -1,4 +1,4 @@
-[variables]
+ [variables]
 	UPLOAD_MAX_FILESIZE = '100M'
 	POST_MAX_SIZE = '100M'
 
