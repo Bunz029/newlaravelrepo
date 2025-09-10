@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 use App\Traits\LogsActivity;
 
 class MapController extends Controller
@@ -15,7 +16,10 @@ class MapController extends Controller
     use LogsActivity;
     public function index()
     {
-        $maps = Map::where('pending_deletion', false)->with('buildings')->get();
+        // Check if pending_deletion column exists, if not, get all maps
+        $maps = Schema::hasColumn('maps', 'pending_deletion') 
+            ? Map::where('pending_deletion', false)->with('buildings')->get()
+            : Map::with('buildings')->get();
         
         Log::info('Maps being returned:', $maps->toArray());
         
@@ -232,18 +236,25 @@ class MapController extends Controller
 
     public function destroy(Map $map)
     {
-        // Mark for deletion instead of immediately deleting
-        $map->pending_deletion = true;
-        $map->save();
-        
-        // Log the map deletion activity
-        $this->logMapActivity('marked_for_deletion', $map, [
-            'marked_by' => Auth::user()->name ?? 'Admin',
-            'is_published' => $map->is_published,
-            'building_count' => $map->buildings->count()
-        ]);
-        
-        return response()->json(['message' => 'Map marked for deletion successfully'], 200);
+        // Check if pending_deletion column exists
+        if (Schema::hasColumn('maps', 'pending_deletion')) {
+            // Mark for deletion instead of immediately deleting
+            $map->pending_deletion = true;
+            $map->save();
+            
+            // Log the map deletion activity
+            $this->logMapActivity('marked_for_deletion', $map, [
+                'marked_by' => Auth::user()->name ?? 'Admin',
+                'is_published' => $map->is_published,
+                'building_count' => $map->buildings->count()
+            ]);
+            
+            return response()->json(['message' => 'Map marked for deletion successfully'], 200);
+        } else {
+            // Fallback to old behavior if column doesn't exist
+            $map->delete();
+            return response()->json(['message' => 'Map deleted successfully'], 200);
+        }
     }
 
     public function activate(Map $map)
