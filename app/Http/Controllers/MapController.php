@@ -39,6 +39,13 @@ class MapController extends Controller
 
     public function store(Request $request)
     {
+        Log::info('Map store request received', [
+            'has_file' => $request->hasFile('image'),
+            'file_size' => $request->hasFile('image') ? $request->file('image')->getSize() : null,
+            'file_mime' => $request->hasFile('image') ? $request->file('image')->getMimeType() : null,
+            'request_data' => $request->except(['image'])
+        ]);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'image' => 'nullable|image|max:20480', // Increased to 20MB for high-res images
@@ -49,7 +56,20 @@ class MapController extends Controller
 
         $imagePath = null;
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('maps', 'public');
+            try {
+                $imagePath = $request->file('image')->store('maps', 'public');
+                Log::info('Image stored successfully', ['path' => $imagePath]);
+            } catch (\Exception $e) {
+                Log::error('Image storage failed', [
+                    'error' => $e->getMessage(),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine()
+                ]);
+                return response()->json([
+                    'message' => 'The image failed to upload.',
+                    'errors' => ['image' => [$e->getMessage()]]
+                ], 422);
+            }
         }
 
         $map = Map::create([

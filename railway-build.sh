@@ -23,7 +23,9 @@ mkdir -p storage/app/public/buildings
 mkdir -p storage/app/public/rooms
 mkdir -p storage/app/public/employees
 mkdir -p storage/app/public/faculty
-chmod -R 775 storage/app/public
+chmod -R 755 storage/
+chmod -R 755 bootstrap/cache/
+chmod -R 755 storage/app/public
 
 # Create storage link for file uploads
 echo "Creating storage link..."
