@@ -16,6 +16,9 @@ fi
 # Run migrations
 php artisan migrate --force
 
+# Create storage link for file uploads
+php artisan storage:link
+
 # Clear and cache configuration
 php artisan config:clear
 php artisan config:cache

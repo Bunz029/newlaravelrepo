@@ -1,9 +1,10 @@
 <?php
+
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-class CreateBuildingsTable extends Migration
+return new class extends Migration
 {
     public function up()
     {
@@ -11,7 +12,7 @@ class CreateBuildingsTable extends Migration
             $table->id();
             $table->string('building_name');
             $table->text('description')->nullable();
-            $table->string('image_url')->nullable();
+            $table->string('image_path')->nullable();
             $table->foreignId('map_id')->nullable()->constrained()->onDelete('cascade');
             $table->integer('x_coordinate')->nullable();
             $table->integer('y_coordinate')->nullable();
@@ -28,4 +29,4 @@ class CreateBuildingsTable extends Migration
     {
         Schema::dropIfExists('buildings');
     }
-}
+};
