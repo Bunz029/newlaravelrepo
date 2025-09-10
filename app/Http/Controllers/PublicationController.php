@@ -26,7 +26,7 @@ class PublicationController extends Controller
             $allMaps = Map::all();
             $unpublishedMapsCount = $allMaps->filter(function ($map) {
                 if (!$map->is_published) return true;
-                if ($map->pending_deletion) return true;
+                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) return true;
                 if ($map->published_data) {
                     $currentData = $map->only(['name', 'image_path', 'width', 'height', 'is_active']);
                     return $currentData != $map->published_data;
@@ -175,7 +175,7 @@ class PublicationController extends Controller
                 }
                 
                 // Include if marked for deletion
-                if ($map->pending_deletion) {
+                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
                     return true;
                 }
                 
@@ -291,7 +291,7 @@ class PublicationController extends Controller
             $map = Map::findOrFail($id);
             
             // Handle map deletion vs update
-            if ($map->pending_deletion) {
+            if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
                 // Map is marked for deletion - actually delete it
                 $mapName = $map->name;
                 $buildingCount = $map->buildings->count();
@@ -430,7 +430,7 @@ class PublicationController extends Controller
             $allMaps = Map::all();
             $unpublishedMaps = $allMaps->filter(function ($map) {
                 if (!$map->is_published) return true;
-                if ($map->pending_deletion) return true;
+                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) return true;
                 if ($map->published_data) {
                     $currentData = $map->only(['name', 'image_path', 'width', 'height', 'is_active']);
                     return $currentData != $map->published_data;
@@ -440,7 +440,7 @@ class PublicationController extends Controller
             
             $count = 0;
             foreach ($unpublishedMaps as $map) {
-                if ($map->pending_deletion) {
+                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
                     // Map is marked for deletion - actually delete it
                     $mapName = $map->name;
                     $buildingCount = $map->buildings->count();
@@ -623,6 +623,7 @@ class PublicationController extends Controller
             $allMaps = Map::all();
             $unpublishedMaps = $allMaps->filter(function ($map) {
                 if (!$map->is_published) return true;
+                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) return true;
                 if ($map->published_data) {
                     $currentData = $map->only(['name', 'image_path', 'width', 'height', 'is_active']);
                     return $currentData != $map->published_data;
@@ -632,13 +633,29 @@ class PublicationController extends Controller
             
             $mapCount = 0;
             foreach ($unpublishedMaps as $map) {
-                $map->published_data = $map->only([
-                    'name', 'image_path', 'width', 'height', 'is_active'
-                ]);
-                $map->is_published = true;
-                $map->published_at = $publishedAt;
-                $map->published_by = $publishedBy;
-                $map->save();
+                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
+                    // Map is marked for deletion - actually delete it
+                    $mapName = $map->name;
+                    $buildingCount = $map->buildings->count();
+                    
+                    // Log the published deletion activity before deleting
+                    $this->logActivity('published_deletion', 'map', $map->id, $mapName, [
+                        'building_count' => $buildingCount,
+                        'published_by' => $publishedBy
+                    ]);
+                    
+                    // Actually delete the map
+                    $map->delete();
+                } else {
+                    // Normal publish
+                    $map->published_data = $map->only([
+                        'name', 'image_path', 'width', 'height', 'is_active'
+                    ]);
+                    $map->is_published = true;
+                    $map->published_at = $publishedAt;
+                    $map->published_by = $publishedBy;
+                    $map->save();
+                }
                 $mapCount++;
             }
             
