@@ -15,7 +15,7 @@ class MapController extends Controller
     use LogsActivity;
     public function index()
     {
-        $maps = Map::with('buildings')->get();
+        $maps = Map::where('pending_deletion', false)->with('buildings')->get();
         
         Log::info('Maps being returned:', $maps->toArray());
         
@@ -232,16 +232,18 @@ class MapController extends Controller
 
     public function destroy(Map $map)
     {
-        // Move to trash instead of hard delete
-        $moved = \App\Http\Controllers\TrashController::moveToTrash('map', $map, Auth::user()->name ?? 'Admin');
+        // Mark for deletion instead of immediately deleting
+        $map->pending_deletion = true;
+        $map->save();
         
-        if ($moved) {
-            // Only delete the actual record after moving to trash
-            $map->delete();
-            return response()->json(['message' => 'Map moved to trash successfully'], 200);
-        } else {
-            return response()->json(['error' => 'Failed to move map to trash'], 500);
-        }
+        // Log the map deletion activity
+        $this->logMapActivity('marked_for_deletion', $map, [
+            'marked_by' => Auth::user()->name ?? 'Admin',
+            'is_published' => $map->is_published,
+            'building_count' => $map->buildings->count()
+        ]);
+        
+        return response()->json(['message' => 'Map marked for deletion successfully'], 200);
     }
 
     public function activate(Map $map)
