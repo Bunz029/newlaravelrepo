@@ -19,16 +19,15 @@ Route::get('/', function () {
     ]);
 });
 
-// Serve storage files directly
-Route::get('/storage/{path}', function ($path) {
-    $filePath = storage_path('app/public/' . $path);
-    
-    if (!file_exists($filePath)) {
-        abort(404, 'File not found');
-    }
-    
-    return response()->file($filePath);
-})->where('path', '.*');
+// Create storage link route (for easy deployment)
+Route::get('/linkstorage', function () {
+    \Artisan::call('storage:link');
+    return response()->json([
+        'status' => 'success',
+        'message' => 'Storage link created successfully!'
+    ]);
+});
+
 
 // User Routes
 Route::middleware('auth:sanctum')->get('user', [UserController::class, 'getAuthenticatedUser']);
