@@ -1,0 +1,8 @@
+*
+!.gitignore
+!maps/
+!buildings/
+!rooms/
+!employees/
+!faculty/
+!images/
