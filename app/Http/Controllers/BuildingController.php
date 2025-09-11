@@ -613,38 +613,28 @@ class BuildingController extends Controller
     {
         $building = Building::findOrFail($id);
         $building->load('employees');
-        
-        // Move to trash and mark as pending deletion (but don't hard delete)
-        $moved = \App\Http\Controllers\TrashController::moveToTrash('building', $building, Auth::user()->name ?? 'Admin');
-        
-        if ($moved) {
-            // Mark as pending deletion but DON'T change publication status
-            // The building will remain visible in the app until the deletion is published
-            $building->pending_deletion = true;
-            // Keep is_published unchanged - the published snapshot will determine visibility
-            $building->save();
-            
-            // Log the activity with detailed information
-            $this->logBuildingActivity('deleted', $building, [
-                'map_id' => $building->map_id,
-                'employee_count' => $building->employees->count(),
-                'employees' => $building->employees->map(function ($e) {
-                    return $e->employee_name ?? $e->name ?? $e->email ?? 'Employee';
-                })->filter()->values()->toArray(),
-                'coordinates' => "({$building->x_coordinate}, {$building->y_coordinate})",
-                'dimensions' => "{$building->width}x{$building->height}",
-                'description' => $building->description,
-                'services' => $building->services,
-                'latitude' => $building->latitude,
-                'longitude' => $building->longitude,
-                'is_active' => $building->is_active
-            ]);
-            
-            // Don't hard delete - images and data are preserved for potential restoration
-            return response()->json(['message' => 'Building marked for deletion - will be removed from app after publishing'], 200);
-        } else {
-            return response()->json(['error' => 'Failed to move building to trash'], 500);
-        }
+
+        // Mark as pending deletion (do NOT create DeletedItem yet; that happens on publish)
+        $building->pending_deletion = true;
+        $building->save();
+
+        // Log the activity with detailed information
+        $this->logBuildingActivity('deleted', $building, [
+            'map_id' => $building->map_id,
+            'employee_count' => $building->employees->count(),
+            'employees' => $building->employees->map(function ($e) {
+                return $e->employee_name ?? $e->name ?? $e->email ?? 'Employee';
+            })->filter()->values()->toArray(),
+            'coordinates' => "({$building->x_coordinate}, {$building->y_coordinate})",
+            'dimensions' => "{$building->width}x{$building->height}",
+            'description' => $building->description,
+            'services' => $building->services,
+            'latitude' => $building->latitude,
+            'longitude' => $building->longitude,
+            'is_active' => $building->is_active
+        ]);
+
+        return response()->json(['message' => 'Building marked for deletion - will be removed from app after publishing'], 200);
     }
 
     public function upload(Request $request)

@@ -46,10 +46,8 @@ class Map extends Model
         parent::boot();
 
         static::deleting(function ($map) {
-            // Delete associated image file
-            if ($map->image_path) {
-                Storage::disk('public')->delete($map->image_path);
-            }
+            // Do not delete image files here; images must remain available for Trash previews and restore.
+            // Image cleanup should happen only on permanent delete in the TrashController.
         });
     }
 } 

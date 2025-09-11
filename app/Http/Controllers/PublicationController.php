@@ -367,7 +367,15 @@ class PublicationController extends Controller
             
             // Handle building deletion vs update
             if ($building->pending_deletion) {
-                // Building is marked for deletion - remove published data to delete from app
+                // Building is marked for deletion - create trash snapshot and unpublish from app
+                \App\Models\DeletedItem::create([
+                    'item_type' => 'building',
+                    'original_id' => $building->id,
+                    'item_data' => $building->toArray(),
+                    'deleted_by' => Auth::user()?->name ?? 'Admin',
+                    'deleted_at' => now(),
+                ]);
+
                 $building->published_data = null;
                 $building->is_published = false;
                 $building->published_at = now();
@@ -381,9 +389,6 @@ class PublicationController extends Controller
                     'published_by' => Auth::user()?->name ?? 'Admin'
                 ]);
 
-                // Actually delete the building record
-                $building->delete();
-                
                 return response()->json([
                     'message' => 'Building deletion published - removed from app',
                     'action' => 'deleted'
