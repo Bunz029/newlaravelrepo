@@ -301,23 +301,32 @@ class PublicationController extends Controller
     {
         try {
             return DB::transaction(function () use ($id) {
-                $map = Map::findOrFail($id);
-                
+            $map = Map::findOrFail($id);
+            
                 // Handle map deletion vs update
                 if ($map->pending_deletion) {
-                    // Map is marked for deletion - just delete the record (already moved to trash)
+                    // Map is marked for deletion - create trash snapshot and delete record
                     $mapName = $map->name;
                     $buildingCount = $map->buildings->count();
-                    
+
+                    // Create DeletedItem snapshot at publish time (not at card delete)
+                    \App\Models\DeletedItem::create([
+                        'item_type' => 'map',
+                        'original_id' => $map->id,
+                        'item_data' => $map->toArray(),
+                        'deleted_by' => Auth::user()?->name ?? 'Admin',
+                        'deleted_at' => now(),
+                    ]);
+
                     // Log the published deletion activity
                     $this->logActivity('published_deletion', 'map', $map->id, $mapName, [
                         'building_count' => $buildingCount,
                         'published_by' => Auth::user()?->name ?? 'Admin'
                     ]);
-                    
-                    // Actually delete the map record (already in trash from destroy method)
+
+                    // Actually delete the map record
                     $map->delete();
-                    
+
                     return response()->json([
                         'message' => 'Map deletion published - removed from app',
                         'action' => 'deleted'
@@ -325,15 +334,15 @@ class PublicationController extends Controller
                 } else {
                     // Regular map update - store current data as published snapshot
                     $publishedData = $map->only([
-                        'name', 'image_path', 'width', 'height', 'is_active'
-                    ]);
+                'name', 'image_path', 'width', 'height', 'is_active'
+            ]);
                     
                     $map->published_data = $publishedData;
-                
-                    $map->is_published = true;
-                    $map->published_at = now();
+            
+            $map->is_published = true;
+            $map->published_at = now();
                     $map->published_by = Auth::user()?->name ?? 'Admin';
-                    $map->save();
+            $map->save();
 
                     // Log the published map activity
                     $this->logActivity('published_map', 'map', $map->id, $map->name, [
@@ -341,11 +350,11 @@ class PublicationController extends Controller
                         'published_by' => Auth::user()?->name ?? 'Admin'
                     ]);
 
-                    return response()->json([
-                        'message' => 'Map published successfully',
+            return response()->json([
+                'message' => 'Map published successfully',
                         'map' => $map,
                         'action' => 'updated'
-                    ]);
+            ]);
                 }
             });
         } catch (\Exception $e) {
@@ -363,7 +372,7 @@ class PublicationController extends Controller
     {
         try {
             return DB::transaction(function () use ($id) {
-                $building = Building::findOrFail($id);
+            $building = Building::findOrFail($id);
             
             // Handle building deletion vs update
             if ($building->pending_deletion) {
@@ -432,11 +441,11 @@ class PublicationController extends Controller
                     'published_by' => Auth::user()?->name ?? 'Admin'
                 ]);
 
-                return response()->json([
-                    'message' => 'Building published successfully',
+            return response()->json([
+                'message' => 'Building published successfully',
                     'building' => $building,
                     'action' => 'updated'
-                ]);
+            ]);
             }
             });
         } catch (\Exception $e) {

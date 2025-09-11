@@ -69,14 +69,8 @@ class Building extends Model
         parent::boot();
 
         static::deleting(function ($building) {
-            // Delete associated images when building is permanently deleted
-            if ($building->image_path) {
-                Storage::disk('public')->delete($building->image_path);
-            }
-            
-            if ($building->modal_image_path) {
-                Storage::disk('public')->delete($building->modal_image_path);
-            }
+            // Do not delete images here; keep them for Trash previews and possible restore.
+            // Image cleanup should happen on permanent delete from Trash.
         });
     }
 
