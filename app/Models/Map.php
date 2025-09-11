@@ -46,6 +46,15 @@ class Map extends Model
         parent::boot();
 
         static::deleting(function ($map) {
+            // Create trash entry before deleting
+            \App\Models\DeletedItem::create([
+                'type' => 'map',
+                'original_id' => $map->id,
+                'data' => $map->toArray(),
+                'deleted_at' => now(),
+            ]);
+
+            // Delete associated image file
             if ($map->image_path) {
                 Storage::disk('public')->delete($map->image_path);
             }
