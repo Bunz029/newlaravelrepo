@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Building;
 use App\Models\Map;
+use App\Models\DeletedItem;
 use App\Models\Employee;
 use App\Models\Room;
 use Illuminate\Http\Request;
@@ -173,6 +174,7 @@ class PublicationController extends Controller
     {
         try {
             // Find maps that are either unpublished OR have changes from their published snapshot
+            // Only get maps that actually exist (not deleted)
             $allMaps = Map::orderBy('updated_at', 'desc')->get();
             $unpublishedMaps = $allMaps->filter(function ($map) {
                 // Include if never published
@@ -298,50 +300,54 @@ class PublicationController extends Controller
     public function publishMap($id): JsonResponse
     {
         try {
-            $map = Map::findOrFail($id);
-            
-            // Handle map deletion vs update
-            try {
-                if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
-                // Map is marked for deletion - actually delete it
-                $mapName = $map->name;
-                $buildingCount = $map->buildings->count();
+            return DB::transaction(function () use ($id) {
+                $map = Map::findOrFail($id);
                 
-                // Log the published deletion activity before deleting
-                $this->logActivity('published_deletion', 'map', $map->id, $mapName, [
-                    'building_count' => $buildingCount,
-                    'published_by' => Auth::user()?->name ?? 'Admin'
-                ]);
+                // Handle map deletion vs update
+                if ($map->pending_deletion) {
+                    // Map is marked for deletion - just delete the record (already moved to trash)
+                    $mapName = $map->name;
+                    $buildingCount = $map->buildings->count();
+                    
+                    // Log the published deletion activity
+                    $this->logActivity('published_deletion', 'map', $map->id, $mapName, [
+                        'building_count' => $buildingCount,
+                        'published_by' => Auth::user()?->name ?? 'Admin'
+                    ]);
+                    
+                    // Actually delete the map record (already in trash from destroy method)
+                    $map->delete();
+                    
+                    return response()->json([
+                        'message' => 'Map deletion published - removed from app',
+                        'action' => 'deleted'
+                    ]);
+                } else {
+                    // Regular map update - store current data as published snapshot
+                    $publishedData = $map->only([
+                        'name', 'image_path', 'width', 'height', 'is_active'
+                    ]);
+                    
+                    $map->published_data = $publishedData;
                 
-                // Actually delete the map
-                $map->delete();
-                
-                return response()->json([
-                    'message' => 'Map deletion published successfully',
-                    'deleted_map' => $mapName
-                ]);
-                }
-            } catch (Exception $e) {
-                // Column doesn't exist yet, proceed with normal publish
-            }
-            
-            // Normal publish logic
-            if (true) {
-                // Store current data as published snapshot
-                $map->published_data = $map->only([
-                    'name', 'image_path', 'width', 'height', 'is_active'
-                ]);
-                
-                $map->is_published = true;
-                $map->published_at = now();
-                $map->published_by = Auth::user()?->name ?? 'Admin';
-                $map->save();
+                    $map->is_published = true;
+                    $map->published_at = now();
+                    $map->published_by = Auth::user()?->name ?? 'Admin';
+                    $map->save();
 
-                return response()->json([
-                    'message' => 'Map published successfully',
-                    'map' => $map
-                ]);
-            }
+                    // Log the published map activity
+                    $this->logActivity('published_map', 'map', $map->id, $map->name, [
+                        'building_count' => $map->buildings->count(),
+                        'published_by' => Auth::user()?->name ?? 'Admin'
+                    ]);
+
+                    return response()->json([
+                        'message' => 'Map published successfully',
+                        'map' => $map,
+                        'action' => 'updated'
+                    ]);
+                }
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Failed to publish map',
@@ -356,7 +362,8 @@ class PublicationController extends Controller
     public function publishBuilding($id): JsonResponse
     {
         try {
-            $building = Building::findOrFail($id);
+            return DB::transaction(function () use ($id) {
+                $building = Building::findOrFail($id);
             
             // Handle building deletion vs update
             if ($building->pending_deletion) {
@@ -420,12 +427,13 @@ class PublicationController extends Controller
                     'published_by' => Auth::user()?->name ?? 'Admin'
                 ]);
 
-            return response()->json([
-                'message' => 'Building published successfully',
+                return response()->json([
+                    'message' => 'Building published successfully',
                     'building' => $building,
                     'action' => 'updated'
-            ]);
+                ]);
             }
+            });
         } catch (\Exception $e) {
             return response()->json([
                 'error' => 'Failed to publish building',
@@ -470,8 +478,8 @@ class PublicationController extends Controller
                         // Log the published deletion activity before deleting
                         $this->logActivity('published_deletion', 'map', $map->id, $mapName, [
                             'building_count' => $buildingCount,
-                            'published_by' => $publishedBy
-                        ]);
+                    'published_by' => $publishedBy
+                ]);
                         
                         // Actually delete the map
                         $map->delete();
@@ -695,14 +703,14 @@ class PublicationController extends Controller
                     }
                 } catch (Exception $e) {
                     // Column doesn't exist yet, proceed with normal publish
-                    $map->published_data = $map->only([
-                        'name', 'image_path', 'width', 'height', 'is_active'
-                    ]);
-                    $map->is_published = true;
-                    $map->published_at = $publishedAt;
-                    $map->published_by = $publishedBy;
-                    $map->save();
-                }
+                $map->published_data = $map->only([
+                    'name', 'image_path', 'width', 'height', 'is_active'
+                ]);
+                $map->is_published = true;
+                $map->published_at = $publishedAt;
+                $map->published_by = $publishedBy;
+                $map->save();
+            }
                 $mapCount++;
             }
             

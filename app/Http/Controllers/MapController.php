@@ -245,27 +245,27 @@ class MapController extends Controller
 
     public function destroy(Map $map)
     {
-        // Check if pending_deletion column exists
-        if (Schema::hasColumn('maps', 'pending_deletion')) {
-            // Mark for deletion instead of immediately deleting
+        // Move to trash and mark as pending deletion (same pattern as buildings)
+        $moved = \App\Http\Controllers\TrashController::moveToTrash('map', $map, Auth::user()->name ?? 'Admin');
+        
+        if ($moved) {
+            // Mark as pending deletion but DON'T change publication status
+            // The map will remain visible in the app until the deletion is published
             $map->pending_deletion = true;
+            // Keep is_published unchanged - the published snapshot will determine visibility
             $map->save();
             
-            // Also move to Trash so it appears in /trash for management
-            \App\Http\Controllers\TrashController::moveToTrash('map', $map, Auth::user()->name ?? 'Admin');
-
             // Log the map deletion activity
-            $this->logMapActivity('marked_for_deletion', $map, [
-                'marked_by' => Auth::user()->name ?? 'Admin',
+            $this->logMapActivity('deleted', $map, [
+                'deleted_by' => Auth::user()->name ?? 'Admin',
                 'is_published' => $map->is_published,
                 'building_count' => $map->buildings->count()
             ]);
             
-            return response()->json(['message' => 'Map marked for deletion successfully'], 200);
+            // Don't hard delete - data is preserved for potential restoration
+            return response()->json(['message' => 'Map marked for deletion - will be removed from app after publishing'], 200);
         } else {
-            // Fallback to old behavior if column doesn't exist
-            $map->delete();
-            return response()->json(['message' => 'Map deleted successfully'], 200);
+            return response()->json(['error' => 'Failed to move map to trash'], 500);
         }
     }
 
