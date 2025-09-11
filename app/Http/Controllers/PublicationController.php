@@ -609,7 +609,27 @@ class PublicationController extends Controller
             $deletedCount = 0;
             foreach ($unpublishedBuildings as $building) {
                 if ($building->pending_deletion) {
-                    // Actually delete buildings that are pending deletion
+                    // Building marked for deletion - create trash snapshot and delete
+                    \App\Models\DeletedItem::create([
+                        'item_type' => 'building',
+                        'original_id' => $building->id,
+                        'item_data' => $building->toArray(),
+                        'deleted_by' => $publishedBy,
+                        'deleted_at' => now(),
+                    ]);
+
+                    $building->published_data = null;
+                    $building->is_published = false;
+                    $building->published_at = $publishedAt;
+                    $building->published_by = $publishedBy;
+                    $building->save();
+                    
+                    $this->logActivity('published_deletion', 'building', $building->id, $building->building_name, [
+                        'map_id' => $building->map_id,
+                        'employee_count' => $building->employees->count(),
+                        'published_by' => $publishedBy
+                    ]);
+                    
                     $building->delete();
                     $deletedCount++;
                 } else {
@@ -696,9 +716,18 @@ class PublicationController extends Controller
             foreach ($unpublishedMaps as $map) {
                 try {
                     if (Schema::hasColumn('maps', 'pending_deletion') && $map->pending_deletion) {
-                        // Map is marked for deletion - actually delete it
+                        // Map is marked for deletion - create trash snapshot and delete
                         $mapName = $map->name;
                         $buildingCount = $map->buildings->count();
+                        
+                        // Create DeletedItem snapshot
+                        \App\Models\DeletedItem::create([
+                            'item_type' => 'map',
+                            'original_id' => $map->id,
+                            'item_data' => $map->toArray(),
+                            'deleted_by' => $publishedBy,
+                            'deleted_at' => now(),
+                        ]);
                         
                         // Log the published deletion activity before deleting
                         $this->logActivity('published_deletion', 'map', $map->id, $mapName, [
@@ -797,7 +826,27 @@ class PublicationController extends Controller
             
             foreach ($unpublishedBuildings as $building) {
                 if ($building->pending_deletion) {
-                    // Actually delete buildings that are pending deletion
+                    // Building marked for deletion - create trash snapshot and delete
+                    \App\Models\DeletedItem::create([
+                        'item_type' => 'building',
+                        'original_id' => $building->id,
+                        'item_data' => $building->toArray(),
+                        'deleted_by' => $publishedBy,
+                        'deleted_at' => now(),
+                    ]);
+
+                    $building->published_data = null;
+                    $building->is_published = false;
+                    $building->published_at = $publishedAt;
+                    $building->published_by = $publishedBy;
+                    $building->save();
+                    
+                    $this->logActivity('published_deletion', 'building', $building->id, $building->building_name, [
+                        'map_id' => $building->map_id,
+                        'employee_count' => $building->employees->count(),
+                        'published_by' => $publishedBy
+                    ]);
+                    
                     $building->delete();
                     $deletedCount++;
                 } else {
