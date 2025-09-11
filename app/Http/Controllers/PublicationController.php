@@ -398,6 +398,9 @@ class PublicationController extends Controller
                     'published_by' => Auth::user()?->name ?? 'Admin'
                 ]);
 
+                // Remove the building record so it no longer appears in pending changes
+                $building->delete();
+
                 return response()->json([
                     'message' => 'Building deletion published - removed from app',
                     'action' => 'deleted'
