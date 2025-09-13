@@ -337,6 +337,14 @@ class PublicationController extends Controller
                 'name', 'image_path', 'width', 'height', 'is_active'
             ]);
                     
+                    // Clean up old image if it exists in published_data and is different from current
+                    if ($map->published_data && 
+                        isset($map->published_data['image_path']) && 
+                        $map->published_data['image_path'] !== $map->image_path) {
+                        // Delete the old published image file
+                        \Illuminate\Support\Facades\Storage::disk('public')->delete($map->published_data['image_path']);
+                    }
+                    
                     $map->published_data = $publishedData;
             
             $map->is_published = true;
@@ -1040,10 +1048,20 @@ class PublicationController extends Controller
                 ]);
             }
             
+            // Store current image path before reverting
+            $currentImagePath = $map->image_path;
+            
             // Revert to published state
             $map->fill($map->published_data);
             $map->is_published = true; // Keep it published since we're reverting to published state
             $map->save();
+            
+            // Clean up the current image if it's different from the published one
+            if ($currentImagePath && 
+                $currentImagePath !== $map->image_path && 
+                $currentImagePath !== $map->published_data['image_path']) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete($currentImagePath);
+            }
 
             return response()->json([
                 'message' => 'Map reverted to published state successfully',

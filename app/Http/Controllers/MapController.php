@@ -118,12 +118,13 @@ class MapController extends Controller
         ]);
 
         if ($request->hasFile('image')) {
-            // Delete old image
-            if ($map->image_path) {
-                Storage::disk('public')->delete($map->image_path);
-            }
+            // Store new image first
             $imagePath = $request->file('image')->store('maps', 'public');
+            $oldImagePath = $map->image_path; // Store old path for later cleanup
             $map->image_path = $imagePath;
+            
+            // Don't delete old image immediately - let it be cleaned up during publish
+            // This prevents the app from breaking when it tries to load the old published image
         }
 
         $data = $request->except('image');
@@ -384,9 +385,9 @@ class MapController extends Controller
             return response()->json(['message' => 'No active map found'], 404);
         }
         
-        // Check if the active map has published data
+        // ALWAYS use published data if it exists - this ensures unpublished changes are never shown
         if ($currentActiveMap->published_data) {
-            // Use the published snapshot data
+            // Use the published snapshot data - this is the key fix
             $activeMap = $currentActiveMap;
         } else {
             // Fall back to legacy published maps - only if the current map is published
