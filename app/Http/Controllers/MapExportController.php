@@ -77,13 +77,13 @@ class MapExportController extends Controller
                 // Export employees for this building
                 foreach ($building->employees as $employee) {
                     $buildingData['employees'][] = [
-                        'name' => $employee->name,
+                        'name' => $employee->employee_name,
                         'position' => $employee->position,
                         'department' => $employee->department,
                         'email' => $employee->email,
-                        'phone' => $employee->phone,
-                        'image_path' => $employee->image_path,
-                        'image_data' => $this->getImageAsBase64($employee->image_path)
+                        'phone' => $employee->contact_number,
+                        'image_path' => $employee->employee_image,
+                        'image_data' => $this->getImageAsBase64($employee->employee_image)
                     ];
                 }
 
@@ -207,16 +207,16 @@ class MapExportController extends Controller
                         foreach ($buildingData['employees'] as $employeeData) {
                             $employee = new Employee();
                             $employee->building_id = $building->id;
-                            $employee->name = $employeeData['name'];
+                            $employee->employee_name = $employeeData['name'];
                             $employee->position = $employeeData['position'] ?? '';
                             $employee->department = $employeeData['department'] ?? '';
                             $employee->email = $employeeData['email'] ?? '';
-                            $employee->phone = $employeeData['phone'] ?? '';
+                            $employee->contact_number = $employeeData['phone'] ?? '';
                             $employee->is_published = false;
 
                             // Handle employee image
                             if (isset($employeeData['image_data']) && $employeeData['image_data']) {
-                                $employee->image_path = $this->saveImageFromBase64(
+                                $employee->employee_image = $this->saveImageFromBase64(
                                     $employeeData['image_data'],
                                     'employees',
                                     'employee_' . time() . '_' . rand(1000, 9999) . '.jpg'
