@@ -14,7 +14,6 @@ class Room extends Model
     protected $fillable = [
         'building_id',
         'name',
-        'description',
         'panorama_image_path',
         'thumbnail_path',
         'is_published',

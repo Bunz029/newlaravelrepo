@@ -66,7 +66,17 @@ class MapExportController extends Controller
             ];
 
             // Export buildings with all their data
-            foreach ($map->buildings as $building) {
+            Log::info('MapExportController: Exporting buildings', [
+                'buildings_count' => $map->buildings->count()
+            ]);
+            
+            foreach ($map->buildings as $buildingIndex => $building) {
+                Log::info("MapExportController: Processing building {$buildingIndex}", [
+                    'building_name' => $building->building_name,
+                    'employees_count' => $building->employees->count(),
+                    'rooms_count' => $building->rooms->count()
+                ]);
+
                 $buildingData = [
                     'building_name' => $building->building_name,
                     'description' => $building->description,
@@ -86,12 +96,14 @@ class MapExportController extends Controller
                 ];
 
                 // Export employees for this building
-                foreach ($building->employees as $employee) {
+                foreach ($building->employees as $employeeIndex => $employee) {
+                    Log::info("MapExportController: Processing employee {$employeeIndex}", [
+                        'name' => $employee->employee_name,
+                        'has_image' => !empty($employee->employee_image)
+                    ]);
+                    
                     $buildingData['employees'][] = [
                         'name' => $employee->employee_name,
-                        'position' => $employee->position,
-                        'department' => $employee->department,
-                        'email' => $employee->email,
                         'phone' => $employee->contact_number,
                         'image_path' => $employee->employee_image,
                         'image_filename' => $this->copyImageToExport($employee->employee_image, $imagesDir, 'employee')
@@ -99,10 +111,15 @@ class MapExportController extends Controller
                 }
 
                 // Export rooms for this building
-                foreach ($building->rooms as $room) {
+                foreach ($building->rooms as $roomIndex => $room) {
+                    Log::info("MapExportController: Processing room {$roomIndex}", [
+                        'name' => $room->name,
+                        'has_panorama' => !empty($room->panorama_image_path),
+                        'has_thumbnail' => !empty($room->thumbnail_path)
+                    ]);
+                    
                     $roomData = [
                         'name' => $room->name,
-                        'description' => $room->description,
                         'panorama_image_path' => $room->panorama_image_path,
                         'thumbnail_path' => $room->thumbnail_path,
                         'panorama_image_filename' => $this->copyImageToExport($room->panorama_image_path, $imagesDir, 'panorama'),
@@ -165,11 +182,19 @@ class MapExportController extends Controller
     public function importMap(Request $request)
     {
         try {
+            Log::info('MapImportController: Starting import process');
+            
             $request->validate([
-                'map_file' => 'required|file|mimes:zip|max:50000' // 50MB max
+                'map_file' => 'required|file|mimes:zip|max:100000' // 100MB max
             ]);
 
             $zipFile = $request->file('map_file');
+            Log::info('MapImportController: ZIP file received', [
+                'filename' => $zipFile->getClientOriginalName(),
+                'size' => $zipFile->getSize(),
+                'mime_type' => $zipFile->getMimeType()
+            ]);
+
             $tempDir = storage_path('app/temp/import_' . time());
             
             // Create temp directory
@@ -179,23 +204,47 @@ class MapExportController extends Controller
 
             // Extract ZIP file
             $zip = new ZipArchive();
-            if ($zip->open($zipFile->getPathname()) !== TRUE) {
-                throw new \Exception('Cannot open ZIP file');
+            $result = $zip->open($zipFile->getPathname());
+            if ($result !== TRUE) {
+                throw new \Exception('Cannot open ZIP file. Error code: ' . $result);
             }
 
-            $zip->extractTo($tempDir);
+            Log::info('MapImportController: Extracting ZIP file to: ' . $tempDir);
+            $extractResult = $zip->extractTo($tempDir);
             $zip->close();
+
+            if (!$extractResult) {
+                throw new \Exception('Failed to extract ZIP file');
+            }
+
+            // List extracted files for debugging
+            $extractedFiles = $this->listDirectoryRecursive($tempDir);
+            Log::info('MapImportController: Extracted files', ['files' => $extractedFiles]);
 
             // Read layout.json
             $layoutPath = $tempDir . '/layout.json';
             if (!file_exists($layoutPath)) {
-                throw new \Exception('layout.json not found in ZIP file');
+                throw new \Exception('layout.json not found in ZIP file. Available files: ' . implode(', ', $extractedFiles));
             }
 
-            $importData = json_decode(file_get_contents($layoutPath), true);
-            if (!$importData) {
-                throw new \Exception('Invalid layout.json file');
+            $jsonContent = file_get_contents($layoutPath);
+            if (!$jsonContent) {
+                throw new \Exception('Cannot read layout.json file');
             }
+
+            Log::info('MapImportController: JSON content length: ' . strlen($jsonContent));
+            
+            $importData = json_decode($jsonContent, true);
+            if (!$importData) {
+                $jsonError = json_last_error_msg();
+                throw new \Exception('Invalid layout.json file. JSON error: ' . $jsonError);
+            }
+
+            Log::info('MapImportController: Successfully parsed JSON', [
+                'has_map' => isset($importData['map']),
+                'buildings_count' => count($importData['buildings'] ?? []),
+                'rooms_count' => count($importData['rooms'] ?? [])
+            ]);
 
             $importInfo = $importData['export_info'] ?? [];
 
@@ -223,7 +272,18 @@ class MapExportController extends Controller
 
             // Import buildings
             if (isset($importData['buildings']) && is_array($importData['buildings'])) {
-                foreach ($importData['buildings'] as $buildingData) {
+                Log::info('MapImportController: Starting building import', [
+                    'buildings_count' => count($importData['buildings'])
+                ]);
+                
+                foreach ($importData['buildings'] as $index => $buildingData) {
+                    Log::info("MapImportController: Processing building {$index}", [
+                        'building_name' => $buildingData['building_name'] ?? 'Unknown',
+                        'has_employees' => isset($buildingData['employees']) && is_array($buildingData['employees']),
+                        'employees_count' => count($buildingData['employees'] ?? []),
+                        'has_rooms' => isset($buildingData['rooms']) && is_array($buildingData['rooms']),
+                        'rooms_count' => count($buildingData['rooms'] ?? [])
+                    ]);
                     $building = new Building();
                     $building->map_id = $map->id;
                     $building->building_name = $buildingData['building_name'];
@@ -258,61 +318,85 @@ class MapExportController extends Controller
 
                     // Import employees for this building
                     if (isset($buildingData['employees']) && is_array($buildingData['employees'])) {
-                        foreach ($buildingData['employees'] as $employeeData) {
+                        Log::info("MapImportController: Importing employees for building {$building->building_name}", [
+                            'employees_count' => count($buildingData['employees'])
+                        ]);
+                        
+                        foreach ($buildingData['employees'] as $empIndex => $employeeData) {
                             // Skip if employee name is empty or null
                             if (empty($employeeData['name'])) {
+                                Log::warning("MapImportController: Skipping employee {$empIndex} - empty name");
                                 continue;
                             }
+
+                            Log::info("MapImportController: Processing employee {$empIndex}", [
+                                'name' => $employeeData['name'],
+                                'has_image' => isset($employeeData['image_filename']) && $employeeData['image_filename']
+                            ]);
 
                             $employee = new Employee();
                             $employee->building_id = $building->id;
                             $employee->employee_name = $employeeData['name'];
-                            $employee->position = $employeeData['position'] ?? '';
-                            $employee->department = $employeeData['department'] ?? '';
-                            $employee->email = $employeeData['email'] ?? '';
                             $employee->contact_number = $employeeData['phone'] ?? '';
                             $employee->is_published = false;
 
                             // Handle employee image with conflict resolution
                             if (isset($employeeData['image_filename']) && $employeeData['image_filename']) {
-                                $employee->employee_image = $this->copyImageFromImportWithConflictResolution(
+                                $imagePath = $this->copyImageFromImportWithConflictResolution(
                                     $tempDir . '/images/' . $employeeData['image_filename'],
                                     'employees',
                                     'employee_' . $importId . '_' . rand(1000, 9999)
                                 );
+                                $employee->employee_image = $imagePath;
+                                Log::info("MapImportController: Employee image copied", ['path' => $imagePath]);
                             }
 
                             $employee->save();
+                            Log::info("MapImportController: Employee saved with ID: {$employee->id}");
                         }
                     }
 
                     // Import rooms for this building
                     if (isset($buildingData['rooms']) && is_array($buildingData['rooms'])) {
-                        foreach ($buildingData['rooms'] as $roomData) {
+                        Log::info("MapImportController: Importing rooms for building {$building->building_name}", [
+                            'rooms_count' => count($buildingData['rooms'])
+                        ]);
+                        
+                        foreach ($buildingData['rooms'] as $roomIndex => $roomData) {
+                            Log::info("MapImportController: Processing room {$roomIndex}", [
+                                'name' => $roomData['name'],
+                                'has_panorama' => isset($roomData['panorama_image_filename']) && $roomData['panorama_image_filename'],
+                                'has_thumbnail' => isset($roomData['thumbnail_filename']) && $roomData['thumbnail_filename']
+                            ]);
+
                             $room = new Room();
                             $room->building_id = $building->id;
                             $room->name = $roomData['name'];
-                            $room->description = $roomData['description'] ?? '';
                             $room->is_published = false;
 
                             // Handle room images with conflict resolution
                             if (isset($roomData['panorama_image_filename']) && $roomData['panorama_image_filename']) {
-                                $room->panorama_image_path = $this->copyImageFromImportWithConflictResolution(
+                                $panoramaPath = $this->copyImageFromImportWithConflictResolution(
                                     $tempDir . '/images/' . $roomData['panorama_image_filename'],
                                     'rooms/360',
                                     'panorama_' . $importId . '_' . rand(1000, 9999)
                                 );
+                                $room->panorama_image_path = $panoramaPath;
+                                Log::info("MapImportController: Room panorama image copied", ['path' => $panoramaPath]);
                             }
 
                             if (isset($roomData['thumbnail_filename']) && $roomData['thumbnail_filename']) {
-                                $room->thumbnail_path = $this->copyImageFromImportWithConflictResolution(
+                                $thumbnailPath = $this->copyImageFromImportWithConflictResolution(
                                     $tempDir . '/images/' . $roomData['thumbnail_filename'],
                                     'rooms/thumbnails',
                                     'thumb_' . $importId . '_' . rand(1000, 9999)
                                 );
+                                $room->thumbnail_path = $thumbnailPath;
+                                Log::info("MapImportController: Room thumbnail image copied", ['path' => $thumbnailPath]);
                             }
 
                             $room->save();
+                            Log::info("MapImportController: Room saved with ID: {$room->id}");
                         }
                     }
                 }
@@ -356,23 +440,49 @@ class MapExportController extends Controller
     private function copyImageToExport($imagePath, $exportDir, $prefix)
     {
         if (!$imagePath) {
+            Log::info("MapExportController: Skipping image copy - no path provided for prefix: {$prefix}");
             return null;
         }
 
         try {
             $sourcePath = storage_path('app/public/' . $imagePath);
+            Log::info("MapExportController: Attempting to copy image", [
+                'source_path' => $sourcePath,
+                'exists' => file_exists($sourcePath),
+                'prefix' => $prefix
+            ]);
+            
             if (file_exists($sourcePath)) {
                 $extension = pathinfo($sourcePath, PATHINFO_EXTENSION);
                 $filename = $prefix . '_' . time() . '_' . rand(1000, 9999) . '.' . $extension;
                 $destPath = $exportDir . '/' . $filename;
                 
-                copy($sourcePath, $destPath);
-                return $filename;
+                $copyResult = copy($sourcePath, $destPath);
+                if ($copyResult) {
+                    Log::info("MapExportController: Image copied successfully", [
+                        'source' => $sourcePath,
+                        'dest' => $destPath,
+                        'filename' => $filename
+                    ]);
+                    return $filename;
+                } else {
+                    Log::error("MapExportController: Failed to copy image", [
+                        'source' => $sourcePath,
+                        'dest' => $destPath
+                    ]);
+                }
+            } else {
+                Log::warning("MapExportController: Source image file not found", [
+                    'source_path' => $sourcePath,
+                    'image_path' => $imagePath
+                ]);
             }
         } catch (\Exception $e) {
-            Log::warning('Failed to copy image for export', [
+            Log::error('MapExportController: Exception during image copy', [
                 'image_path' => $imagePath,
-                'error' => $e->getMessage()
+                'prefix' => $prefix,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
         }
 
@@ -402,6 +512,11 @@ class MapExportController extends Controller
     private function copyImageFromImportWithConflictResolution($sourcePath, $directory, $baseFilename)
     {
         if (!file_exists($sourcePath)) {
+            Log::warning("MapImportController: Source image not found", [
+                'source_path' => $sourcePath,
+                'directory' => $directory,
+                'base_filename' => $baseFilename
+            ]);
             return null;
         }
 
@@ -410,29 +525,50 @@ class MapExportController extends Controller
             $fullDirectory = storage_path('app/public/' . $directory);
             if (!file_exists($fullDirectory)) {
                 mkdir($fullDirectory, 0755, true);
+                Log::info("MapImportController: Created directory", ['directory' => $fullDirectory]);
             }
 
             // Get file extension from source
             $extension = pathinfo($sourcePath, PATHINFO_EXTENSION);
             if (!$extension) {
                 $extension = 'jpg'; // Default extension
+                Log::info("MapImportController: Using default extension", ['extension' => $extension]);
             }
 
             // Generate unique filename
             $filename = $this->generateUniqueFilename($fullDirectory, $baseFilename, $extension);
             $destPath = $fullDirectory . '/' . $filename;
 
-            // Copy file
-            copy($sourcePath, $destPath);
+            Log::info("MapImportController: Copying image", [
+                'source' => $sourcePath,
+                'dest' => $destPath,
+                'filename' => $filename
+            ]);
 
-            return $directory . '/' . $filename;
+            // Copy file
+            $copyResult = copy($sourcePath, $destPath);
+            if ($copyResult) {
+                Log::info("MapImportController: Image copied successfully", [
+                    'source' => $sourcePath,
+                    'dest' => $destPath,
+                    'final_path' => $directory . '/' . $filename
+                ]);
+                return $directory . '/' . $filename;
+            } else {
+                Log::error("MapImportController: Failed to copy image", [
+                    'source' => $sourcePath,
+                    'dest' => $destPath
+                ]);
+                return null;
+            }
 
         } catch (\Exception $e) {
-            Log::error('Failed to copy image from import with conflict resolution', [
+            Log::error('MapImportController: Exception during image copy with conflict resolution', [
                 'source_path' => $sourcePath,
                 'directory' => $directory,
                 'base_filename' => $baseFilename,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             return null;
         }
@@ -453,6 +589,7 @@ class MapExportController extends Controller
 
         return $filename;
     }
+
 
     /**
      * Copy image from import to storage (legacy method for backward compatibility)
@@ -561,6 +698,27 @@ class MapExportController extends Controller
             ]);
             return null;
         }
+    }
+
+    /**
+     * List directory contents recursively
+     */
+    private function listDirectoryRecursive($dir, $prefix = '')
+    {
+        $files = [];
+        if (is_dir($dir)) {
+            $items = scandir($dir);
+            foreach ($items as $item) {
+                if ($item != '.' && $item != '..') {
+                    $path = $dir . '/' . $item;
+                    $files[] = $prefix . $item;
+                    if (is_dir($path)) {
+                        $files = array_merge($files, $this->listDirectoryRecursive($path, $prefix . $item . '/'));
+                    }
+                }
+            }
+        }
+        return $files;
     }
 
     /**
