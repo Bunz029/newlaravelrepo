@@ -377,27 +377,24 @@ class MapController extends Controller
 
     public function getActivePublished()
     {
-        // First try to find maps with published snapshots that are marked as active
-        $mapsWithSnapshots = Map::whereNotNull('published_data')->get();
+        // Find the currently active map
+        $currentActiveMap = Map::where('is_active', true)->first();
         
-        $activeMap = null;
-        foreach ($mapsWithSnapshots as $map) {
-            if ($map->published_data && isset($map->published_data['is_active']) && $map->published_data['is_active']) {
-                $activeMap = $map;
-                break;
+        if (!$currentActiveMap) {
+            return response()->json(['message' => 'No active map found'], 404);
+        }
+        
+        // Check if the active map has published data
+        if ($currentActiveMap->published_data) {
+            // Use the published snapshot data
+            $activeMap = $currentActiveMap;
+        } else {
+            // Fall back to legacy published maps - only if the current map is published
+            if ($currentActiveMap->is_published && $currentActiveMap->published_at) {
+                $activeMap = $currentActiveMap;
+            } else {
+                return response()->json(['message' => 'No active published map found'], 404);
             }
-        }
-        
-        // If no active map found in snapshots, fall back to legacy published maps
-        if (!$activeMap) {
-            $activeMap = Map::whereNotNull('published_at')
-                          ->where('is_published', true)
-                          ->where('is_active', true)
-                          ->first();
-        }
-        
-        if (!$activeMap) {
-            return response()->json(['message' => 'No active published map found'], 404);
         }
         
         // Use published snapshot if available, otherwise use current data
@@ -426,10 +423,6 @@ class MapController extends Controller
                                         });
         } else {
             // Legacy published map - use current data only if still published
-            if (!$activeMap->is_published) {
-                return response()->json(['message' => 'No active published map found'], 404);
-            }
-            
             $publishedMap = $activeMap;
             
             // Get published buildings (exclude pending deletion)
