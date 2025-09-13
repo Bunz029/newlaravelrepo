@@ -52,7 +52,7 @@ class MapController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'image' => 'nullable|image|max:20480', // Increased to 20MB for high-res images
+            'image' => 'nullable|image|max:102400', // Increased to 100MB to match PHP configuration
             'width' => 'required|numeric',
             'height' => 'required|numeric',
             'is_published' => 'nullable|in:true,false,1,0'
@@ -109,7 +109,7 @@ class MapController extends Controller
     {
         $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'image' => 'nullable|image|max:20480', // Increased to 20MB for high-res images
+            'image' => 'nullable|image|max:102400', // Increased to 100MB to match PHP configuration
             'width' => 'sometimes|required|integer',
             'height' => 'sometimes|required|integer',
             'is_active' => 'sometimes|required|boolean',
@@ -455,7 +455,7 @@ class MapController extends Controller
             Log::info('Upload request received', ['request' => $request->all()]);
             
             $request->validate([
-                'image' => 'required|image|mimes:jpeg,png,jpg|max:20480' // 20MB max for high-res images
+                'image' => 'required|image|mimes:jpeg,png,jpg|max:102400' // 100MB max to match PHP configuration
             ]);
 
             if (!$request->hasFile('image')) {
