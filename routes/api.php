@@ -12,6 +12,7 @@ use App\Http\Controllers\TrashController;
 use App\Http\Controllers\PublicationController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\ActivityLogController;
+use App\Http\Controllers\MapExportController;
 
 // Health check route for Railway
 Route::get('/', function () {
@@ -144,4 +145,10 @@ Route::prefix('activity-logs')->group(function () {
     Route::post('/', [ActivityLogController::class, 'store']);
     Route::get('/stats', [ActivityLogController::class, 'stats']);
     Route::delete('/clear', [ActivityLogController::class, 'clear']);
+});
+
+// Map Export/Import Routes
+Route::prefix('map-export')->group(function () {
+    Route::get('/{id}', [MapExportController::class, 'exportMap']);
+    Route::post('/import', [MapExportController::class, 'importMap']);
 });

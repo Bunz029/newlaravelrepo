@@ -1,0 +1,10 @@
+[33me7e3eb3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m fix: increase image upload limit from 20MB to 100MB
+[33m6bc601e[m Fix publish all: create DeletedItem entries for pending deletions; ensure trash flow works with bulk publish
+[33m1a8f9d5[m Fix publish deletion: delete building record after publishing deletion to remove it from pending changes
+[33m64c8157[m Trash/publish flow fixes: - Map & Building destroy only set pending_deletion; no immediate DeletedItem - Create DeletedItem on publish deletion (maps/buildings) - Preserve images on delete; cleanup only on permanent delete
+[33mb7f51aa[m Trash + Publish behavior: - Map: stop deleting image files on delete; keep assets for trash/restore - Building: destroy only marks pending_deletion; create DeletedItem when publishing deletion - Map publish deletion: proper trash entry and counter updates
+[33m5af7fc8[m[33m ([m[1;32mmain[m[33m)[m chore: apply recent Laravel fixes (CORS, publish flow, storage)
+[33md9c929b[m[33m ([m[1;31morigin/main[m[33m)[m Map: create DeletedItem entry on hard delete (move-to-trash flow)
+[33m4953b6f[m chore(cors): allow isuetest.netlify.app and netlify subdomains
+[33m1aad0ec[m Optimizing Map Action Features
+[33m5a6379a[m Remove duplicate API routes from web.php to fix CORS and CSRF issues
