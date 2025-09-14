@@ -5,6 +5,6 @@
 [33mb7f51aa[m Trash + Publish behavior: - Map: stop deleting image files on delete; keep assets for trash/restore - Building: destroy only marks pending_deletion; create DeletedItem when publishing deletion - Map publish deletion: proper trash entry and counter updates
 [33m5af7fc8[m[33m ([m[1;32mmain[m[33m)[m chore: apply recent Laravel fixes (CORS, publish flow, storage)
 [33md9c929b[m[33m ([m[1;31morigin/main[m[33m)[m Map: create DeletedItem entry on hard delete (move-to-trash flow)
-[33m4953b6f[m chore(cors): allow isuetest.netlify.app and netlify subdomains
+[33m4953b6f[m chore(cors): allow isuemapa9dmn.netlify.app and netlify subdomains
 [33m1aad0ec[m Optimizing Map Action Features
 [33m5a6379a[m Remove duplicate API routes from web.php to fix CORS and CSRF issues

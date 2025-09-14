@@ -104,7 +104,9 @@ class MapExportController extends Controller
                     
                     $buildingData['employees'][] = [
                         'name' => $employee->employee_name,
-                        'phone' => $employee->contact_number,
+                        'position' => $employee->position ?? '',
+                        'department' => $employee->department ?? '',
+                        'email' => $employee->email ?? '',
                         'image_path' => $employee->employee_image,
                         'image_filename' => $this->copyImageToExport($employee->employee_image, $imagesDir, 'employee')
                     ];
@@ -337,7 +339,9 @@ class MapExportController extends Controller
                             $employee = new Employee();
                             $employee->building_id = $building->id;
                             $employee->employee_name = $employeeData['name'];
-                            $employee->contact_number = $employeeData['phone'] ?? '';
+                            $employee->position = $employeeData['position'] ?? '';
+                            $employee->department = $employeeData['department'] ?? '';
+                            $employee->email = $employeeData['email'] ?? '';
                             $employee->is_published = false;
 
                             // Handle employee image with conflict resolution
