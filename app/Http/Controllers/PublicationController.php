@@ -1389,10 +1389,10 @@ class PublicationController extends Controller
 
             // Calculate a global version hash based on all published data
             $versionData = [
-                'map_version' => $latestMapPublished ? $latestMapPublished->published_at->timestamp : 0,
-                'building_version' => $latestBuildingPublished ? $latestBuildingPublished->published_at->timestamp : 0,
-                'employee_version' => $latestEmployeePublished ? $latestEmployeePublished->published_at->timestamp : 0,
-                'room_version' => $latestRoomPublished ? $latestRoomPublished->updated_at->timestamp : 0,
+                'map_version' => $latestMapPublished ? strtotime($latestMapPublished->published_at) : 0,
+                'building_version' => $latestBuildingPublished ? strtotime($latestBuildingPublished->published_at) : 0,
+                'employee_version' => $latestEmployeePublished ? strtotime($latestEmployeePublished->published_at) : 0,
+                'room_version' => $latestRoomPublished ? strtotime($latestRoomPublished->updated_at) : 0,
             ];
 
             // Create a global version hash
