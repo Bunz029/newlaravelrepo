@@ -1363,4 +1363,60 @@ class PublicationController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get data version information for cache invalidation
+     */
+    public function getDataVersion(): JsonResponse
+    {
+        try {
+            // Get the latest published timestamps for each data type
+            $latestMapPublished = Map::whereNotNull('published_at')
+                ->orderBy('published_at', 'desc')
+                ->first();
+            
+            $latestBuildingPublished = Building::whereNotNull('published_at')
+                ->orderBy('published_at', 'desc')
+                ->first();
+            
+            $latestEmployeePublished = Employee::whereNotNull('published_at')
+                ->orderBy('published_at', 'desc')
+                ->first();
+            
+            $latestRoomPublished = Room::where('is_published', true)
+                ->orderBy('updated_at', 'desc')
+                ->first();
+
+            // Calculate a global version hash based on all published data
+            $versionData = [
+                'map_version' => $latestMapPublished ? $latestMapPublished->published_at->timestamp : 0,
+                'building_version' => $latestBuildingPublished ? $latestBuildingPublished->published_at->timestamp : 0,
+                'employee_version' => $latestEmployeePublished ? $latestEmployeePublished->published_at->timestamp : 0,
+                'room_version' => $latestRoomPublished ? $latestRoomPublished->updated_at->timestamp : 0,
+            ];
+
+            // Create a global version hash
+            $globalVersion = md5(json_encode($versionData));
+            
+            // Get the latest overall timestamp
+            $latestTimestamp = max([
+                $versionData['map_version'],
+                $versionData['building_version'],
+                $versionData['employee_version'],
+                $versionData['room_version']
+            ]);
+
+            return response()->json([
+                'version' => $globalVersion,
+                'timestamp' => $latestTimestamp > 0 ? date('c', $latestTimestamp) : null,
+                'data_versions' => $versionData,
+                'last_updated' => $latestTimestamp > 0 ? date('c', $latestTimestamp) : null
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to get data version',
+                'message' => $e->getMessage()
+            ], 500);
+        }
+    }
 }
