@@ -70,6 +70,7 @@ Route::prefix('published')->group(function () {
     Route::get('/employees/building/{buildingId}', [EmployeeController::class, 'getPublishedByBuilding']);
     Route::get('/rooms/building/{buildingId}', [RoomController::class, 'getRoomsForBuilding']);
     Route::get('/map/active', [MapController::class, 'getActivePublished']);
+    Route::get('/version', [PublicationController::class, 'getDataVersion']);
 });
 
 // Faculty Routes (Legacy - will be replaced by employees)
