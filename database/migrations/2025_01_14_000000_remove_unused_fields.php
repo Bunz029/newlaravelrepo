@@ -13,12 +13,21 @@ return new class extends Migration
     {
         // Remove unused fields from employees table
         Schema::table('employees', function (Blueprint $table) {
-            $table->dropColumn(['email', 'position', 'department']);
+            $columnsToDrop = [];
+            if (Schema::hasColumn('employees', 'email')) $columnsToDrop[] = 'email';
+            if (Schema::hasColumn('employees', 'position')) $columnsToDrop[] = 'position';
+            if (Schema::hasColumn('employees', 'department')) $columnsToDrop[] = 'department';
+            
+            if (!empty($columnsToDrop)) {
+                $table->dropColumn($columnsToDrop);
+            }
         });
 
         // Remove unused fields from rooms table
         Schema::table('rooms', function (Blueprint $table) {
-            $table->dropColumn('description');
+            if (Schema::hasColumn('rooms', 'description')) {
+                $table->dropColumn('description');
+            }
         });
     }
 
