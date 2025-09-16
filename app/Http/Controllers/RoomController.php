@@ -217,17 +217,17 @@ class RoomController extends Controller
      */
     public function update(Request $request, $id): JsonResponse
     {
-        // Debug: Log what we're receiving
-        \Log::info('Room update request data:', $request->all());
-        \Log::info('Room update request files:', $request->files->all());
-        \Log::info('Raw request content length: ' . strlen($request->getContent()));
-        \Log::info('Request headers:', $request->headers->all());
-        \Log::info('$_POST data:', $_POST);
-        \Log::info('$_FILES data:', $_FILES);
+        // Debug: Log what we're receiving (safe context format)
+        \Log::info('Room update request data', ['data' => $request->all()]);
+        \Log::info('Room update request files', ['files' => $request->files->all()]);
+        \Log::info('Raw request content length', ['length' => strlen($request->getContent())]);
+        \Log::info('Request headers', ['headers' => $request->headers->all()]);
+        \Log::info('POST data', ['post' => $_POST]);
+        \Log::info('FILES data', ['files' => $_FILES]);
         
         // Get the raw request body
         $rawBody = $request->getContent();
-        \Log::info('Raw body first 500 chars: ' . substr($rawBody, 0, 500));
+        \Log::info('Raw body first 500 chars', ['snippet' => substr($rawBody, 0, 500)]);
         
         // Parse multipart data manually
         $boundary = null;
@@ -236,13 +236,13 @@ class RoomController extends Controller
             $boundary = $matches[1];
         }
         
-        \Log::info('Boundary: ' . ($boundary ?? 'not found'));
+        \Log::info('Boundary', ['boundary' => $boundary]);
         
         $data = [];
         if ($boundary && $rawBody) {
             // Split by boundary
             $parts = explode('--' . $boundary, $rawBody);
-            \Log::info('Number of parts: ' . count($parts));
+            \Log::info('Number of parts', ['count' => count($parts)]);
             
             foreach ($parts as $part) {
                 if (empty(trim($part)) || trim($part) === '--') continue;
@@ -258,7 +258,7 @@ class RoomController extends Controller
                 if (preg_match('/name="([^"]+)"/', $headers, $matches)) {
                     $fieldName = $matches[1];
                     $data[$fieldName] = $content;
-                    \Log::info("Found field: $fieldName = " . substr($content, 0, 100));
+                    \Log::info('Found multipart field', ['name' => $fieldName, 'preview' => substr($content, 0, 100)]);
                 }
             }
         }
@@ -324,7 +324,7 @@ class RoomController extends Controller
                     null,
                     true // Mark as test file to avoid validation issues
                 );
-                \Log::info('File created from manually parsed data, size: ' . strlen($data['panorama_image']));
+                \Log::info('File created from manually parsed data', ['size' => strlen($data['panorama_image'])]);
             } else {
                 \Log::info('No file uploaded');
             }
