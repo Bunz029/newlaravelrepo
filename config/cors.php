@@ -9,10 +9,15 @@ return [
         'http://localhost:8081',
         'https://isuetest.netlify.app',
         'https://isuemapa9dmn.netlify.app',
-        'https://web-production-4859.up.railway.app'
+        'https://web-production-4859.up.railway.app',
+        'https://*.netlify.app',
+        'https://*.railway.app'
     ],
-    // Allow any Netlify subdomain (optional, safer to list exact domains above)
-    'allowed_origins_patterns' => ['#^https:\/\/[a-z0-9-]+\.netlify\.app$#i'],
+    // Allow any Netlify and Railway subdomain (optional, safer to list exact domains above)
+    'allowed_origins_patterns' => [
+        '#^https:\/\/[a-z0-9-]+\.netlify\.app$#i',
+        '#^https:\/\/[a-z0-9-]+\.railway\.app$#i'
+    ],
     'allowed_headers' => ['*'],
     'exposed_headers' => [],
     'max_age' => 0,

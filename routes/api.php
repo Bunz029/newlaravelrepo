@@ -43,6 +43,40 @@ Route::post('/debug/activity-log', function () {
     }
 });
 
+// Debug route to test admin authentication
+Route::post('/debug/admin-test', function (Request $request) {
+    try {
+        $email = $request->input('email', 'admin@example.com');
+        $admin = \App\Models\Admin::where('email', $email)->first();
+        
+        if (!$admin) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Admin not found',
+                'email' => $email
+            ], 404);
+        }
+        
+        $passwordCheck = \Illuminate\Support\Facades\Hash::check('password123', $admin->password);
+        
+        return response()->json([
+            'status' => 'success',
+            'admin_found' => true,
+            'admin_id' => $admin->id,
+            'admin_name' => $admin->name,
+            'admin_email' => $admin->email,
+            'password_check' => $passwordCheck,
+            'request_data' => $request->all()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
 // Map Management Routes - Put these first to avoid conflicts with other routes
 Route::prefix('map')->group(function () {
     Route::get('/', [MapController::class, 'index']);

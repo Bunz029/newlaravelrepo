@@ -88,6 +88,8 @@ class MapController extends Controller
         $map->image_url = $imagePath ? asset('storage/' . $map->image_path) : null;
         
         // Log the map creation activity
+        // Temporarily disabled due to MySQL strict mode issues
+        /*
         try {
             $this->logMapActivity('created', $map, [
                 'width' => $map->width,
@@ -98,10 +100,12 @@ class MapController extends Controller
         } catch (\Exception $e) {
             Log::warning('Failed to log map creation activity', [
                 'map_id' => $map->id,
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
             // Don't rethrow the exception - just log it and continue
         }
+        */
         
         return response()->json($map, 201);
     }
