@@ -45,35 +45,32 @@ class RoomController extends Controller
                 ->orderBy('name')
                 ->get();
 
-            // Transform each room to use published data instead of current data
-            $publishedRooms = $rooms->map(function ($room) {
-                // If room has published_data (snapshot), use that
-                $snapshot = $room->published_data;
-                if (is_string($snapshot)) {
-                    // Defensive: handle legacy stringified JSON
-                    $decoded = json_decode($snapshot, true);
-                    if (json_last_error() === JSON_ERROR_NONE) {
-                        $snapshot = $decoded;
-                    } else {
-                        $snapshot = null;
+            // Transform each room to use published data instead of current data (defensive)
+            $publishedRooms = collect();
+            foreach ($rooms as $room) {
+                try {
+                    $snapshot = $room->published_data;
+                    if (is_string($snapshot)) {
+                        $decoded = json_decode($snapshot, true);
+                        $snapshot = json_last_error() === JSON_ERROR_NONE ? $decoded : null;
                     }
-                }
-                
-                if (is_array($snapshot) && !empty($snapshot)) {
-                    return [
-                        'id' => $room->id,
-                        'building_id' => $room->building_id,
-                        'name' => $snapshot['name'] ?? $room->name,
-                        'description' => $snapshot['description'] ?? $room->description,
-                        'panorama_image_path' => $snapshot['panorama_image_path'] ?? $room->panorama_image_path,
-                        'thumbnail_path' => $snapshot['thumbnail_path'] ?? $room->thumbnail_path,
-                        'created_at' => $room->created_at,
-                        'updated_at' => $room->updated_at,
-                    ];
-                } else {
-                    // Legacy published room without snapshot - use current data only if still published
+
+                    if (is_array($snapshot) && !empty($snapshot)) {
+                        $publishedRooms->push([
+                            'id' => $room->id,
+                            'building_id' => $room->building_id,
+                            'name' => $snapshot['name'] ?? $room->name,
+                            'description' => $snapshot['description'] ?? $room->description,
+                            'panorama_image_path' => $snapshot['panorama_image_path'] ?? $room->panorama_image_path,
+                            'thumbnail_path' => $snapshot['thumbnail_path'] ?? $room->thumbnail_path,
+                            'created_at' => $room->created_at,
+                            'updated_at' => $room->updated_at,
+                        ]);
+                        continue;
+                    }
+
                     if ($room->is_published) {
-                        return [
+                        $publishedRooms->push([
                             'id' => $room->id,
                             'building_id' => $room->building_id,
                             'name' => $room->name,
@@ -82,13 +79,18 @@ class RoomController extends Controller
                             'thumbnail_path' => $room->thumbnail_path,
                             'created_at' => $room->created_at,
                             'updated_at' => $room->updated_at,
-                        ];
+                        ]);
                     }
-                    return null; // Don't include unpublished rooms without snapshots
+                } catch (\Throwable $ex) {
+                    \Log::warning('Rooms transform error', [
+                        'room_id' => $room->id ?? null,
+                        'error' => $ex->getMessage(),
+                    ]);
+                    // Skip problematic record instead of 500
                 }
-            })->filter()->values(); // Remove null values and reindex
+            }
 
-            return response()->json($publishedRooms, 200, [], JSON_UNESCAPED_SLASHES);
+            return response()->json($publishedRooms->values(), 200, [], JSON_UNESCAPED_SLASHES);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to fetch rooms'], 500);
         }

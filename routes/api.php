@@ -119,9 +119,9 @@ Route::prefix('published')->group(function () {
     Route::get('/maps', [MapController::class, 'getPublished']);
     Route::get('/buildings', [BuildingController::class, 'getPublished']);
     Route::get('/buildings/{id}', [BuildingController::class, 'getPublishedBuilding']);
+    Route::get('/rooms/building/{buildingId}', [RoomController::class, 'getRoomsForBuilding']);
     Route::get('/employees', [EmployeeController::class, 'getPublished']);
     Route::get('/employees/building/{buildingId}', [EmployeeController::class, 'getPublishedByBuilding']);
-    Route::get('/rooms/building/{buildingId}', [RoomController::class, 'getRoomsForBuilding']);
     Route::get('/map/active', [MapController::class, 'getActivePublished']);
 });
 
