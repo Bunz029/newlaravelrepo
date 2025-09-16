@@ -50,11 +50,14 @@ class RoomController extends Controller
             foreach ($rooms as $room) {
                 try {
                     $snapshot = $room->published_data;
+                    
+                    // Handle JSON string conversion
                     if (is_string($snapshot)) {
                         $decoded = json_decode($snapshot, true);
                         $snapshot = json_last_error() === JSON_ERROR_NONE ? $decoded : null;
                     }
 
+                    // Use published data if available and valid
                     if (is_array($snapshot) && !empty($snapshot)) {
                         $publishedRooms->push([
                             'id' => $room->id,
@@ -66,10 +69,8 @@ class RoomController extends Controller
                             'created_at' => $room->created_at,
                             'updated_at' => $room->updated_at,
                         ]);
-                        continue;
-                    }
-
-                    if ($room->is_published) {
+                    } else if ($room->is_published) {
+                        // Use current data if no published_data snapshot but room is published
                         $publishedRooms->push([
                             'id' => $room->id,
                             'building_id' => $room->building_id,
@@ -81,17 +82,25 @@ class RoomController extends Controller
                             'updated_at' => $room->updated_at,
                         ]);
                     }
+                    // Skip rooms that are not published and have no published_data
                 } catch (\Throwable $ex) {
                     \Log::warning('Rooms transform error', [
                         'room_id' => $room->id ?? null,
+                        'building_id' => $room->building_id ?? null,
                         'error' => $ex->getMessage(),
+                        'trace' => $ex->getTraceAsString(),
                     ]);
-                    // Skip problematic record instead of 500
+                    // Skip problematic record instead of returning 500
                 }
             }
 
             return response()->json($publishedRooms->values(), 200, [], JSON_UNESCAPED_SLASHES);
         } catch (\Exception $e) {
+            \Log::error('Failed to fetch rooms for building', [
+                'building_id' => $buildingId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return response()->json(['error' => 'Failed to fetch rooms'], 500);
         }
     }
