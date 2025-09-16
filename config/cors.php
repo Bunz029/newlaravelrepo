@@ -8,7 +8,8 @@ return [
         'http://localhost:3000',
         'http://localhost:8081',
         'https://isuetest.netlify.app',
-        'https://isuemapa9dmn.netlify.app'
+        'https://isuemapa9dmn.netlify.app',
+        'https://web-production-4859.up.railway.app'
     ],
     // Allow any Netlify subdomain (optional, safer to list exact domains above)
     'allowed_origins_patterns' => ['#^https:\/\/[a-z0-9-]+\.netlify\.app$#i'],
