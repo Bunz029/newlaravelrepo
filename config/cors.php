@@ -7,6 +7,7 @@ return [
         'http://localhost:8080',
         'http://localhost:3000',
         'http://localhost:8081',
+        'http://localhost:8082',
         'https://isuetest.netlify.app',
         'https://isuemapa9dmn.netlify.app',
         'https://web-production-4859.up.railway.app',
