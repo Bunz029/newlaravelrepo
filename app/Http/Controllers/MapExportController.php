@@ -339,10 +339,26 @@ class MapExportController extends Controller
                             $employee = new Employee();
                             $employee->building_id = $building->id;
                             $employee->employee_name = $employeeData['name'];
-                            $employee->position = $employeeData['position'] ?? '';
-                            $employee->department = $employeeData['department'] ?? '';
-                            $employee->email = $employeeData['email'] ?? '';
                             $employee->is_published = false;
+
+                            // Some deployments don't have these optional columns.
+                            // Only set them if the column exists; otherwise store in published_data.
+                            $extra = [];
+                            if (\Illuminate\Support\Facades\Schema::hasColumn('employees', 'position')) {
+                                $employee->position = $employeeData['position'] ?? '';
+                            } else if (!empty($employeeData['position'])) {
+                                $extra['position'] = $employeeData['position'];
+                            }
+                            if (\Illuminate\Support\Facades\Schema::hasColumn('employees', 'department')) {
+                                $employee->department = $employeeData['department'] ?? '';
+                            } else if (!empty($employeeData['department'])) {
+                                $extra['department'] = $employeeData['department'];
+                            }
+                            if (\Illuminate\Support\Facades\Schema::hasColumn('employees', 'email')) {
+                                $employee->email = $employeeData['email'] ?? '';
+                            } else if (!empty($employeeData['email'])) {
+                                $extra['email'] = $employeeData['email'];
+                            }
 
                             // Handle employee image with conflict resolution
                             if (isset($employeeData['image_filename']) && $employeeData['image_filename']) {
@@ -353,6 +369,14 @@ class MapExportController extends Controller
                                 );
                                 $employee->employee_image = $imagePath;
                                 Log::info("MapImportController: Employee image copied", ['path' => $imagePath]);
+                            }
+
+                            // Persist any extra fields into published_data JSON if supported
+                            if (!empty($extra)) {
+                                try {
+                                    $existing = is_array($employee->published_data) ? $employee->published_data : [];
+                                    $employee->published_data = array_merge($existing, $extra);
+                                } catch (\Throwable $t) {}
                             }
 
                             $employee->save();
