@@ -20,7 +20,7 @@ return [
         '#^https:\/\/[a-z0-9-]+\.railway\.app$#i'
     ],
     'allowed_headers' => ['*'],
-    'exposed_headers' => [],
+    'exposed_headers' => ['ETag', 'Cache-Control'],
     'max_age' => 0,
     'supports_credentials' => true,
 ];

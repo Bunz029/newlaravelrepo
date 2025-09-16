@@ -157,6 +157,8 @@ Route::prefix('trash')->group(function () {
 
 // Publication Routes
 Route::prefix('publish')->group(function () {
+    // Version endpoint for clients to detect new content
+    Route::get('/version', [PublicationController::class, 'version']);
     Route::get('/status', [PublicationController::class, 'status']);
     Route::get('/unpublished', [PublicationController::class, 'unpublished']);
     Route::post('/map/{id}', [PublicationController::class, 'publishMap']);

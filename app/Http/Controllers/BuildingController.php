@@ -23,7 +23,11 @@ class BuildingController extends Controller
             $query->where('map_id', (int) $request->query('map_id'));
         }
 
-        return $query->get();
+        $buildings = $query->get();
+        $etag = 'W/"bld-' . md5(($buildings->max('published_at') ?? $buildings->max('updated_at') ?? now()).'|'.($buildings->count())) . '"';
+        return response()->json($buildings)
+            ->header('ETag', $etag)
+            ->header('Cache-Control', 'no-cache, must-revalidate');
     }
 
     public function getPublished()

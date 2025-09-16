@@ -114,7 +114,10 @@ class MapController extends Controller
     {
         $map->load('buildings');
         $map->image_url = $map->image_path ? asset('storage/' . $map->image_path) : null;
-        return response()->json($map);
+        $etag = 'W/"map-' . md5(($map->published_at ?? $map->updated_at ?? now()).'|'.$map->id) . '"';
+        return response()->json($map)
+            ->header('ETag', $etag)
+            ->header('Cache-Control', 'no-cache, must-revalidate');
     }
 
     public function update(Request $request, Map $map)
@@ -178,7 +181,10 @@ class MapController extends Controller
         }
 
         $map->image_url = $map->image_path ? asset('storage/' . $map->image_path) : null;
-        return response()->json($map);
+        $etag = 'W/"map-' . md5(($map->published_at ?? $map->updated_at ?? now()).'|'.$map->id) . '"';
+        return response()->json($map)
+            ->header('ETag', $etag)
+            ->header('Cache-Control', 'no-cache, must-revalidate');
     }
 
     public function saveLayout(Request $request, Map $map)
@@ -312,7 +318,10 @@ class MapController extends Controller
         ]);
 
         $map->image_url = $map->image_path ? asset('storage/' . $map->image_path) : null;
-        return response()->json($map);
+        $etag = 'W/"map-' . md5(($map->published_at ?? $map->updated_at ?? now()).'|'.$map->id) . '"';
+        return response()->json($map)
+            ->header('ETag', $etag)
+            ->header('Cache-Control', 'no-cache, must-revalidate');
     }
 
     public function getActive()
@@ -452,7 +461,10 @@ class MapController extends Controller
         $publishedMap->setRelation('buildings', $publishedBuildings);
         $publishedMap->image_url = $publishedMap->image_path ? asset('storage/' . $publishedMap->image_path) : null;
         
-        return response()->json($publishedMap);
+        $etag = 'W/"map-' . md5(($publishedMap->published_at ?? $publishedMap->updated_at ?? now()).'|'.$publishedMap->id) . '"';
+        return response()->json($publishedMap)
+            ->header('ETag', $etag)
+            ->header('Cache-Control', 'no-cache, must-revalidate');
     }
 
     public function upload(Request $request)

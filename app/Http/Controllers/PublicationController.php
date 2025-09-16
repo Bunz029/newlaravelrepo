@@ -20,6 +20,41 @@ class PublicationController extends Controller
 {
     use LogsActivity;
     /**
+     * Lightweight content version endpoint for clients to check freshness
+     */
+    public function version(): JsonResponse
+    {
+        // Determine the latest publish activity timestamp across content
+        $mapPublished = Map::whereNotNull('published_at')->max('published_at');
+        $buildingPublished = Building::whereNotNull('published_at')->max('published_at');
+        $roomPublished = Room::where('is_published', true)->max('updated_at');
+
+        // Fallback to updated_at if there was never a publish yet
+        $fallbackUpdated = max(
+            (string) (Map::max('updated_at') ?? ''),
+            (string) (Building::max('updated_at') ?? ''),
+            (string) (Room::max('updated_at') ?? '')
+        );
+
+        $latest = collect([$mapPublished, $buildingPublished, $roomPublished, $fallbackUpdated])
+            ->filter()
+            ->map(fn($v) => (string) $v)
+            ->sort()
+            ->last();
+
+        $versionTs = $latest ? strtotime($latest) : 0;
+        $etag = 'W/"cv-' . md5((string) $versionTs) . '"';
+
+        return response()
+            ->json([
+                'version' => $versionTs,
+                'last_published_at' => $latest,
+            ])
+            ->header('ETag', $etag)
+            ->header('Cache-Control', 'no-cache, must-revalidate');
+    }
+
+    /**
      * Get publication status summary
      */
     public function status(): JsonResponse
