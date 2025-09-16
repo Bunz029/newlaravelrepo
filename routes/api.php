@@ -24,6 +24,25 @@ Route::get('/', function () {
     ]);
 });
 
+// Debug route to test activity logging
+Route::post('/debug/activity-log', function () {
+    try {
+        \App\Models\ActivityLog::create([
+            'action' => 'test',
+            'target_type' => 'debug',
+            'target_name' => 'test activity',
+            'user_name' => 'debug user'
+        ]);
+        return response()->json(['status' => 'success', 'message' => 'Activity log created successfully']);
+    } catch (\Exception $e) {
+        return response()->json([
+            'status' => 'error',
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});
+
 // Map Management Routes - Put these first to avoid conflicts with other routes
 Route::prefix('map')->group(function () {
     Route::get('/', [MapController::class, 'index']);
