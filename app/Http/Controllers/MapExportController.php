@@ -341,7 +341,7 @@ class MapExportController extends Controller
                             $employee->employee_name = $employeeData['name'];
                             $employee->position = $employeeData['position'] ?? '';
                             $employee->department = $employeeData['department'] ?? '';
-                            $employee->email = !empty($employeeData['email']) ? $employeeData['email'] : null;
+                            $employee->email = $employeeData['email'] ?? '';
                             $employee->is_published = false;
 
                             // Handle employee image with conflict resolution
