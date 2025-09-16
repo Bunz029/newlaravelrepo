@@ -30,6 +30,26 @@ class ActivityLog extends Model
     ];
 
     /**
+     * The attributes that should be hidden for arrays.
+     */
+    protected $hidden = [];
+
+    /**
+     * Indicates if the model should be timestamped.
+     */
+    public $timestamps = true;
+
+    /**
+     * The primary key for the model.
+     */
+    protected $primaryKey = 'id';
+
+    /**
+     * Indicates if the IDs are auto-incrementing.
+     */
+    public $incrementing = true;
+
+    /**
      * The attributes that should be cast.
      */
     protected $casts = [

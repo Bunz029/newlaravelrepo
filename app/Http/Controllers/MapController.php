@@ -88,12 +88,20 @@ class MapController extends Controller
         $map->image_url = $imagePath ? asset('storage/' . $map->image_path) : null;
         
         // Log the map creation activity
-        $this->logMapActivity('created', $map, [
-            'width' => $map->width,
-            'height' => $map->height,
-            'is_active' => $map->is_active,
-            'is_published' => $map->is_published
-        ]);
+        try {
+            $this->logMapActivity('created', $map, [
+                'width' => $map->width,
+                'height' => $map->height,
+                'is_active' => $map->is_active,
+                'is_published' => $map->is_published
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Failed to log map creation activity', [
+                'map_id' => $map->id,
+                'error' => $e->getMessage()
+            ]);
+            // Don't rethrow the exception - just log it and continue
+        }
         
         return response()->json($map, 201);
     }

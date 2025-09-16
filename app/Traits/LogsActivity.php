@@ -60,7 +60,18 @@ trait LogsActivity
             $data['user_agent'] = request()->userAgent();
         }
 
-        ActivityLog::create($data);
+        try {
+            ActivityLog::create($data);
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Handle MySQL strict mode issues
+            if (strpos($e->getMessage(), "Field 'id' doesn't have a default value") !== false) {
+                // Remove id from data if it exists and try again
+                unset($data['id']);
+                ActivityLog::create($data);
+            } else {
+                throw $e;
+            }
+        }
     }
 
     /**
